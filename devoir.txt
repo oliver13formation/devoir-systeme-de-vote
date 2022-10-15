@@ -1,0 +1,118 @@
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity 0.8.13;
+
+contract Voting {
+
+  struct Voter {
+    bool isRegistered;
+    bool hasVoted;
+    uint votedProposalId;
+}
+
+struct Proposal {
+    string description;
+    uint voteCount;
+}
+
+   enum WorkflowStatus {
+        RegisteringVoters, 
+        ProposalsRegistrationStarted,
+        ProposalsRegistrationEnded,
+        VotingSessionStarted,
+        VotingSessionEnded,
+        VotesTallied
+    }
+
+    event VoterRegistered(address voterAddress);
+    event ProposalsRegistrationStarted();
+    event ProposalsRegistrationEnded();
+    event ProposalRegistered(uint proposalId);
+    event VotingSessionStarted();
+    event VotingSessionEnded();
+    event Voted (address voter, uint proposalId);
+    event VotesTallied();
+    event WorkflowStatusChange(WorkflowStatus previousStatus, WorkflowStatus newStatus);
+
+    uint public winningProposalId;
+
+    mapping(address => bool) public whitelist;
+    mapping(address => Voter) public voters;
+    mapping(uint8 => WorkflowStatus) private state;
+
+    WorkflowStatus public votingStatus;
+    Proposal[] public proposals;
+
+
+
+   function addWhiteList(address voterAddress) external onlyOwner {
+        require(!whitelist[voterAddress], "Déjà enregistré");
+        whitelist[voterAddress] = true;
+        voters[voterAddress] = Voter(true, false, 0);
+        emit VoterRegistered(voterAddress);
+    }
+
+    function startProposalsRegistration() private onlyOwner {
+        addProposal("Abstentation");
+        emit ProposalsRegistrationStarted();
+
+    }
+
+    function startProposalsRegistration() private onlyOwner {
+        addProposal("Abstentation");
+        emit ProposalsRegistrationStarted();
+
+    }
+
+    function closeProposalsRegistration() private onlyOwner {
+        emit ProposalsRegistrationEnded();
+    }
+
+    function startVotingSession() private onlyOwner {
+        emit VotingSessionStarted();
+
+    }
+
+    function addVote(uint _proposalId) external registred {
+        require(votingStatus == WorkflowStatus.VotingSessionStarted, "voter");
+        require(voters[msg.sender].hasVoted == false, "Déjà voté");
+        proposals[_proposalId].voteCount++;
+        voters[msg.sender] = Voter(true, true, _proposalId);
+        emit Voted (msg.sender, _proposalId);
+    }
+
+    function closeVotingSession() private onlyOwner {
+        emit VotingSessionEnded();
+    }
+
+function getWinningProposal() private onlyOwner returns (uint _proposalId) {
+        uint winnerVoteCount = 0;
+        uint challenger = 0;
+        for (uint i = 0; i < proposals.length; i++) {
+            if (proposals[i].voteCount > winnerVoteCount) {
+                winnerVoteCount = proposals[i].voteCount;
+                _proposalId = i;
+            } else if (proposals[i].voteCount == winnerVoteCount) {
+                challenger = i;
+            }
+        }
+        winningProposalId = _proposalId;
+        if(winnerVoteCount == proposals[challenger].voteCount) {
+             winningProposalId = 0;
+        }
+        emit VotesTallied();
+        return winningProposalId;
+    }
+
+   function getWinningInfo() public view returns (string memory description, uint voteCount) {
+        require(winningProposalId != 0, "Aucune proposition gagnante");
+        return (proposals[winningProposalId].description, proposals[winningProposalId].voteCount);
+    }
+
+}
+
+
+
+
+
+
